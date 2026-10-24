@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b4a6b"/>
+      <stop offset="0.55" stop-color="#e59a5a"/>
+      <stop offset="1" stop-color="#f6c98a"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f7f8f"/>
+      <stop offset="1" stop-color="#1f4652"/>
+    </linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8a3b26"/>
+      <stop offset="1" stop-color="#6b2b1b"/>
+    </linearGradient>
+    <linearGradient id="log" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9824e"/>
+      <stop offset="1" stop-color="#7a4f2a"/>
+    </linearGradient>
+    <radialGradient id="cut" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f3d9a8"/>
+      <stop offset="0.7" stop-color="#d9b07a"/>
+      <stop offset="1" stop-color="#8a5a30"/>
+    </radialGradient>
+    <clipPath id="frame"><rect width="512" height="512" rx="56"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="512" height="512" fill="url(#sky)"/>
+    <circle cx="150" cy="215" r="46" fill="#ffe2a8" opacity="0.85"/>
+
+    <!-- far forest -->
+    <path d="M0 300 L30 240 L55 285 L80 225 L110 280 L140 230 L170 285 L200 235 L230 290 L260 245 L290 295 L512 295 L512 512 L0 512 Z" fill="#2f4a3a"/>
+    <!-- near hill -->
+    <path d="M0 330 Q120 300 260 322 T512 318 L512 512 L0 512 Z" fill="#24382c"/>
+
+    <!-- sawmill hall -->
+    <g>
+      <rect x="300" y="196" width="190" height="150" fill="url(#wall)"/>
+      <path d="M288 200 L395 132 L502 200 Z" fill="#3a3a3a"/>
+      <path d="M288 200 L395 132 L502 200" fill="none" stroke="#1f1f1f" stroke-width="6" stroke-linejoin="round"/>
+      <g stroke="#5a2214" stroke-width="3" opacity="0.6">
+        <line x1="330" y1="200" x2="330" y2="346"/><line x1="360" y1="200" x2="360" y2="346"/>
+        <line x1="430" y1="200" x2="430" y2="346"/><line x1="460" y1="200" x2="460" y2="346"/>
+      </g>
+      <!-- intake opening -->
+      <rect x="300" y="232" width="74" height="70" fill="#1a1410"/>
+      <!-- chimney + smoke -->
+      <rect x="452" y="118" width="20" height="56" fill="#4a4a4a"/>
+      <circle cx="466" cy="104" r="12" fill="#e8e1d8" opacity="0.7"/>
+      <circle cx="480" cy="84" r="16" fill="#e8e1d8" opacity="0.55"/>
+      <circle cx="496" cy="60" r="20" fill="#e8e1d8" opacity="0.4"/>
+    </g>
+
+    <!-- pond -->
+    <path d="M0 420 Q90 392 200 404 Q250 410 262 440 L262 512 L0 512 Z" fill="url(#water)"/>
+    <g stroke="#9cd0d8" stroke-width="3" stroke-linecap="round" opacity="0.6">
+      <line x1="30" y1="452" x2="70" y2="452"/><line x1="120" y1="478" x2="170" y2="478"/><line x1="60" y1="496" x2="96" y2="496"/>
+    </g>
+    <!-- floating logs -->
+    <g>
+      <rect x="44" y="430" width="92" height="18" rx="9" fill="url(#log)"/>
+      <ellipse cx="136" cy="439" rx="7" ry="9" fill="url(#cut)"/>
+      <rect x="132" y="458" width="84" height="16" rx="8" fill="url(#log)" transform="rotate(-6 174 466)"/>
+      <ellipse cx="214" cy="462" rx="6" ry="8" fill="url(#cut)"/>
+    </g>
+
+    <!-- conveyor ramp from pond into the hall opening -->
+    <g fill="#2a2a2a">
+      <rect x="212" y="404" width="8" height="70"/>
+      <rect x="264" y="350" width="8" height="70"/>
+    </g>
+    <g transform="translate(150 470) rotate(-46.2)">
+      <rect x="0" y="-2" width="268" height="20" fill="#3c3c3c"/>
+      <rect x="0" y="-8" width="268" height="8" fill="#6d6d6d"/>
+      <g fill="#9a9a9a">
+        <circle cx="20" cy="8" r="5"/><circle cx="62" cy="8" r="5"/><circle cx="104" cy="8" r="5"/>
+        <circle cx="146" cy="8" r="5"/><circle cx="188" cy="8" r="5"/><circle cx="230" cy="8" r="5"/>
+      </g>
+      <!-- log riding up -->
+      <rect x="112" y="-34" width="100" height="26" rx="13" fill="url(#log)"/>
+      <ellipse cx="212" cy="-21" rx="9" ry="13" fill="url(#cut)"/>
+      <ellipse cx="212" cy="-21" rx="3" ry="4.5" fill="#a46c38"/>
+    </g>
+  </g>
+  <rect x="3" y="3" width="506" height="506" rx="54" fill="none" stroke="#1b2a20" stroke-width="6"/>
+</svg>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="114" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
+    <author>Nikla</author>
+    <version>1.1.0.0</version>
+    <title>
+        <en>Silverrun Forest Improved (Sawmill Addon)</en>
+        <de>Silverrun Forest Improved (Sägewerk-Addon)</de>
+    </title>
+    <description>
+        <en><![CDATA[Separate companion addon for the Silverrun Forest map. It does NOT modify any map files.
+
+At runtime it upgrades the old sawmill (uniqueId "sawmillOld"):
+- Floating logs in the sawmill pond are collected automatically, no manual activation at the exclamation mark needed. Like in FS22 the logs leave the pond one by one and travel over the chain and up the ramp into the hall (log lift restored).
+- The rollers and conveyor belts only run while a production is active and stop when the sawmill is idle. Speeds are configurable in xml/custom_sawmill_extension.xml.
+
+Requires FS25_silverrunForest to be active in the same savegame.]]></en>
+        <de><![CDATA[Eigenständiges Begleit-Addon für die Map Silverrun Forest. Es verändert KEINE Map-Dateien.
+
+Zur Laufzeit wird das alte Sägewerk (uniqueId "sawmillOld") erweitert:
+- Im Sägewerksteich treibende Stämme werden automatisch eingesammelt, ohne Aktivierung am Ausrufezeichen. Wie in LS22 verlassen die Stämme nacheinander den Teich und fahren über die Kette und die Rampe hoch in die Halle (Stamm-Lift wiederhergestellt).
+- Rollen und Förderbänder laufen nur, solange eine Produktion aktiv ist, und stehen still, wenn das Sägewerk ruht. Geschwindigkeiten sind in xml/custom_sawmill_extension.xml einstellbar.
+
+Setzt voraus, dass FS25_silverrunForest im selben Spielstand aktiv ist.]]></de>
+    </description>
+    <iconFilename>icon_silverrunFix.dds</iconFilename>
+    <multiplayer supported="true" />
+    <dependencies>
+        <dependency>FS25_silverrunForest</dependency>
+    </dependencies>
+    <extraSourceFiles>
+        <sourceFile filename="scripts/SawmillAnimationInjector.lua" />
+    </extraSourceFiles>
+</modDesc>
