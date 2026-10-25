@@ -30,6 +30,8 @@ SawmillAnimationInjector.CONFIG_FILE = "xml/custom_sawmill_extension.xml"
 SawmillAnimationInjector.SEARCH_INTERVAL = 2000   -- ms between searches for the sawmill
 SawmillAnimationInjector.MAX_SEARCH_TIME = 120000 -- give up after 2 minutes
 SawmillAnimationInjector.LOG_PREFIX = "[SilverrunForestImproved] "
+SawmillAnimationInjector.HEAP_EFFECT_HOLD_MS = 3000 -- pipe effects keep running this long after the last drop
+SawmillAnimationInjector.HEAP_EFFECT_MIN_LITERS = 1
 
 local function logInfo(fmt, ...)
     print(SawmillAnimationInjector.LOG_PREFIX .. string.format(fmt, ...))
@@ -235,6 +237,9 @@ function SawmillAnimationInjector:deleteMap()
     self:restoreChipper()
     if self.placeable ~= nil then
         self.placeable.silverrunDrainHeap = nil
+    end
+    if self.heapArea ~= nil then
+        self:setHeapEffectsActive(true)
     end
     self.heapArea = nil
     self.placeable = nil
@@ -869,11 +874,64 @@ function SawmillAnimationInjector:setupHeapDrain(placeable)
     self.drainTimer = 0
     self.drainPending = 0
     self.drainLineOffset = 0
+    self.lastDropTime = -math.huge
+    -- the map starts the pipe effects at load and never stops them; from now on they follow the flow
+    self.heapEffectsActive = true
+    self:setHeapEffectsActive(false)
+end
+
+-- particles, sounds and animations of the pipe above the heap (client side)
+function SawmillAnimationInjector:setHeapEffectsActive(active)
+    local area = self.heapArea
+    if area == nil or self.heapEffectsActive == active then
+        return
+    end
+    self.heapEffectsActive = active
+    if area.effects ~= nil and g_effectManager ~= nil then
+        if active then
+            g_effectManager:startEffects(area.effects)
+        else
+            g_effectManager:stopEffects(area.effects)
+        end
+    end
+    if area.samples ~= nil and g_soundManager ~= nil then
+        for _, sample in pairs(area.samples) do
+            if active then
+                g_soundManager:playSample(sample, 0)
+            else
+                g_soundManager:stopSample(sample)
+            end
+        end
+    end
+    if area.animationNodes ~= nil and g_animationManager ~= nil then
+        if active then
+            g_animationManager:startAnimations(area.animationNodes)
+        else
+            g_animationManager:stopAnimations(area.animationNodes)
+        end
+    end
+end
+
+-- flowing = chips actually went onto the heap within the last seconds (server), or chips are waiting in the
+-- storage (pure multiplayer client, which only knows the synced storage level)
+function SawmillAnimationInjector:updateHeapEffects()
+    local active
+    if g_currentMission:getIsServer() then
+        active = g_time - self.lastDropTime < SawmillAnimationInjector.HEAP_EFFECT_HOLD_MS
+    else
+        local level = self.productionPoint.storage:getFillLevel(FillType.WOODCHIPS) or 0
+        active = level > SawmillAnimationInjector.HEAP_EFFECT_MIN_LITERS
+    end
+    self:setHeapEffectsActive(active)
 end
 
 function SawmillAnimationInjector:updateHeapDrain(dt)
     local area = self.heapArea
-    if area == nil or not g_currentMission:getIsServer() then
+    if area == nil then
+        return
+    end
+    self:updateHeapEffects()
+    if not g_currentMission:getIsServer() then
         return
     end
     local cfg = self.config.chipHeap
@@ -895,6 +953,10 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
         minLiters = math.max(minLiters, g_densityMapHeightManager:getMinValidLiterValue(fillType) or 0)
     end
     if self.drainPending < minLiters then
+        -- still flowing while chips are coming in, only the next small drop is not due yet
+        if level >= minLiters then
+            self.lastDropTime = math.max(self.lastDropTime, g_time - SawmillAnimationInjector.HEAP_EFFECT_HOLD_MS + cfg.tickMs * 2)
+        end
         return
     end
 
@@ -915,6 +977,7 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
     if dropped ~= nil and dropped > 0 then
         storage:setFillLevel(math.max(0, level - dropped), fillType)
         self.drainPending = math.max(0, self.drainPending - dropped)
+        self.lastDropTime = g_time
     end
 end
 
