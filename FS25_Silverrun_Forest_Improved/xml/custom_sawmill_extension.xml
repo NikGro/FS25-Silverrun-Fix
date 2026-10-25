@@ -37,6 +37,14 @@
              autoChip: logs are chipped automatically after they land in the chipper (like FS22). -->
         <chipper triggerNodeName="woodTriggerCrusher" mode="chips" autoChip="true" intervalMs="1500" chipsScale="1.0" />
 
+        <!-- Woodchip heap: in the map the heap spawner creates chips for free (2000 l per in-game hour) while the
+             sawmill's own woodchip storage is never emptied, so the sawmill stops when it reaches 50 000 l.
+             With drainToHeap="true" the free spawning is switched off and the storage is emptied onto the
+             same heap area instead, in a continuous flow of litersPerHour (in-game hours).
+             maxHeapHeight: how high the heap may grow above the area (m). If the heap is full the storage fills
+             up and the sawmill stops, as in reality. tickMs: real time between two small drops. -->
+        <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" />
+
         <!-- Log lift: one log after another leaves the pond, runs over the chain, up the ramp into the hall.
              The map ships 5 trunk models (logAnimNode1-5) and the clip from FS22, but FS25 no longer plays
              the <animation> block of the selling station. The keyframes below are read 1:1 from the map's

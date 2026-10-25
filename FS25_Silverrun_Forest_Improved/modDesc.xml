@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
 <modDesc descVersion="114" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://validation.gdn.giants-software.com/xml/fs25/modDesc.xsd">
     <author>Nikla</author>
-    <version>1.2.0.0</version>
+    <version>1.3.0.0</version>
     <title>
         <en>Silverrun Forest Improved (Sawmill Addon)</en>
         <de>Silverrun Forest Improved (Sägewerk-Addon)</de>
@@ -12,6 +12,7 @@
 At runtime it upgrades the old sawmill (uniqueId "sawmillOld"):
 - Floating logs in the sawmill pond are collected automatically, no manual activation at the exclamation mark needed. Like in FS22 the logs leave the pond one by one and travel over the chain and up the ramp into the hall (log lift restored).
 - The yellow wood chipper next to the pond makes woodchips: logs thrown in are chipped automatically (like FS22) and the chips land on the chip heap next to the sawmill, instead of being added as wood.
+- Woodchip heap fixed: in the map the heap gets chips for free while the sawmill's woodchip storage is never emptied, so the sawmill stops at 50 000 l. Now the storage empties onto the heap in a slow, continuous flow (2000 l per in-game hour). Only chips the sawmill and the chipper really produce end up on the heap.
 - The rollers and conveyor belts only run while a production is active and stop when the sawmill is idle. Speeds are configurable in xml/custom_sawmill_extension.xml.
 
 Requires FS25_silverrunForest to be active in the same savegame.]]></en>
@@ -20,6 +21,7 @@ Requires FS25_silverrunForest to be active in the same savegame.]]></en>
 Zur Laufzeit wird das alte Sägewerk (uniqueId "sawmillOld") erweitert:
 - Im Sägewerksteich treibende Stämme werden automatisch eingesammelt, ohne Aktivierung am Ausrufezeichen. Wie in LS22 verlassen die Stämme nacheinander den Teich und fahren über die Kette und die Rampe hoch in die Halle (Stamm-Lift wiederhergestellt).
 - Der gelbe Holzhäcksler neben dem Teich macht Hackschnitzel: Hineingeworfene Stämme werden automatisch gehäckselt (wie in LS22) und landen als Hackschnitzel auf dem Haufen neben dem Sägewerk, statt als Holz eingelagert zu werden.
+- Hackschnitzel-Haufen repariert: In der Map bekommt der Haufen Hackschnitzel gratis, während das Hackschnitzel-Lager des Sägewerks nie geleert wird. Das Sägewerk bleibt deshalb bei 50.000 l stehen. Jetzt leert sich das Lager in einem langsamen, gleichmäßigen Strom auf den Haufen (2000 l pro Spielstunde). Auf dem Haufen landet nur, was Sägewerk und Häcksler wirklich erzeugen.
 - Rollen und Förderbänder laufen nur, solange eine Produktion aktiv ist, und stehen still, wenn das Sägewerk ruht. Geschwindigkeiten sind in xml/custom_sawmill_extension.xml einstellbar.
 
 Setzt voraus, dass FS25_silverrunForest im selben Spielstand aktiv ist.]]></de>

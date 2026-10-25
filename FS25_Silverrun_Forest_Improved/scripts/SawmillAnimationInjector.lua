@@ -10,6 +10,9 @@
 --   4) turns the yellow wood chipper next to the pond into a real chipper: logs
 --      become WOODCHIPS in the sawmill storage (the map's heap spawner puts them
 --      on the chip heap) instead of WOOD, optionally fully automatic like FS22,
+--   5) fixes the woodchip heap: the map's heap spawner makes chips for free and
+--      never empties the sawmill storage (the sawmill stops at 50 000 l). The
+--      storage is now emptied onto the heap in a continuous flow instead,
 --   2) drives the shader based roller/belt animations of the conveyors and
 --      couples them to the production state,
 --   3) restores the FS22 log lift: logs leave the pond one by one and a trunk
@@ -76,6 +79,7 @@ function SawmillAnimationInjector:loadConfig()
         woodTriggerNodeName = "woodTrigger",
         autoCollect = true,
         intervalMs = 1000,
+        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250},
         chipper = {triggerNodeName = "woodTriggerCrusher", mode = "chips", autoChip = true, intervalMs = 1500, chipsScale = 1.0},
         logLift = {enabled = false, nodePrefix = "logAnimNode", nodeCount = 5, speedScale = 0.5, waitThreshold = 3400, keys = {}, duration = 0}
     }
@@ -132,6 +136,12 @@ function SawmillAnimationInjector:loadConfig()
     cfg.woodTriggerNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".woodTrigger#triggerNodeName"), cfg.woodTriggerNodeName)
     cfg.autoCollect = Utils.getNoNil(getXMLBool(xmlFile, base .. ".woodTrigger#autoCollect"), true)
     cfg.intervalMs = math.max(250, Utils.getNoNil(getXMLInt(xmlFile, base .. ".woodTrigger#intervalMs"), 1000))
+
+    local hp = cfg.chipHeap
+    hp.drainToHeap = Utils.getNoNil(getXMLBool(xmlFile, base .. ".chipHeap#drainToHeap"), hp.drainToHeap)
+    hp.litersPerHour = math.max(1, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipHeap#litersPerHour"), hp.litersPerHour))
+    hp.maxHeapHeight = math.max(0.5, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipHeap#maxHeapHeight"), hp.maxHeapHeight))
+    hp.tickMs = math.max(50, Utils.getNoNil(getXMLInt(xmlFile, base .. ".chipHeap#tickMs"), hp.tickMs))
 
     local ch = cfg.chipper
     ch.triggerNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipper#triggerNodeName"), ch.triggerNodeName)
@@ -199,6 +209,10 @@ function SawmillAnimationInjector:loadMap(filename)
     self.searchTime = 0
     self.collectTimer = 0
     self.chipTimer = 0
+    self.heapArea = nil
+    self.drainTimer = 0
+    self.drainPending = 0
+    self.drainLineOffset = 0
     self.chipperTrigger = nil
     self.chipperOriginalProcess = nil
     self.chipperOriginalText = nil
@@ -219,6 +233,10 @@ function SawmillAnimationInjector:deleteMap()
         end
     end
     self:restoreChipper()
+    if self.placeable ~= nil then
+        self.placeable.silverrunDrainHeap = nil
+    end
+    self.heapArea = nil
     self.placeable = nil
     self.productionPoint = nil
     self.woodTrigger = nil
@@ -268,6 +286,7 @@ function SawmillAnimationInjector:updateInternal(dt)
     self:updateLogLift(dt)
     self:updateAutoCollect(dt)
     self:updateAutoChip(dt)
+    self:updateHeapDrain(dt)
 end
 
 -- -----------------------------------------------------------------------------
@@ -383,6 +402,9 @@ function SawmillAnimationInjector:tryInject()
     -- 2b) yellow wood chipper
     self:setupChipper(unloadingStation)
 
+    -- 2c) woodchip heap fed from the storage
+    self:setupHeapDrain(placeable)
+
     -- 3) log lift trunk models (logAnimNode1..n, already part of the map's placeable)
     self.liftSlots = {}
     local lift = self.config.logLift
@@ -402,9 +424,10 @@ function SawmillAnimationInjector:tryInject()
 
     self.isInjected = true
     self.lastRunningState = nil
-    logInfo("Injected into '%s': %d roller shapes, %d belt shapes, auto collect %s, log lift slots %d, chipper %s.",
+    logInfo("Injected into '%s': %d roller shapes, %d belt shapes, auto collect %s, log lift slots %d, chip heap %s, chipper %s.",
         self.config.uniqueId, #self.rotationShapes, #self.scrollShapes,
         tostring(self.woodTrigger ~= nil and self.config.autoCollect), #self.liftSlots,
+        self.heapArea ~= nil and string.format("drained to heap at %g l/h", self.config.chipHeap.litersPerHour) or "map default",
         self.chipperTrigger ~= nil and (self.config.chipper.mode .. (self.config.chipper.autoChip and ", automatic" or "")) or "unchanged")
 end
 
@@ -788,6 +811,111 @@ function SawmillAnimationInjector:updateAutoChip(dt)
         return
     end
     self:chipWood(trigger, self.placeable:getOwnerFarmId())
+end
+
+-- -----------------------------------------------------------------------------
+-- Woodchip heap: storage -> heap in a continuous flow
+-- -----------------------------------------------------------------------------
+
+function SawmillAnimationInjector.installHeapSpawnerHook()
+    if SawmillAnimationInjector.heapHookInstalled or PlaceableHeapSpawner == nil
+        or PlaceableHeapSpawner.onUpdateTick == nil then
+        return SawmillAnimationInjector.heapHookInstalled == true
+    end
+    -- event listeners call PlaceableHeapSpawner.onUpdateTick by name, so the wrapper is used for every
+    -- heap spawner; it only skips the free spawning of the placeable this mod drains itself
+    local original = PlaceableHeapSpawner.onUpdateTick
+    PlaceableHeapSpawner.onUpdateTick = function(placeable, ...)
+        if placeable.silverrunDrainHeap then
+            return
+        end
+        return original(placeable, ...)
+    end
+    SawmillAnimationInjector.heapHookInstalled = true
+    return true
+end
+
+function SawmillAnimationInjector:setupHeapDrain(placeable)
+    self.heapArea = nil
+    local cfg = self.config.chipHeap
+    if not cfg.drainToHeap then
+        return
+    end
+    if DensityMapHeightUtil == nil or DensityMapHeightUtil.tipToGroundAroundLine == nil
+        or self.productionPoint.storage == nil or FillType == nil or FillType.WOODCHIPS == nil then
+        logWarning("Chip heap: tipping functions or storage not available, map default kept.")
+        return
+    end
+    local spec = placeable.spec_heapSpawner
+    local area = nil
+    if spec ~= nil and type(spec.spawnAreas) == "table" then
+        for _, a in ipairs(spec.spawnAreas) do
+            if a.fillTypeIndex == FillType.WOODCHIPS and a.start ~= nil and a.width ~= nil and a.height ~= nil then
+                area = a
+                break
+            end
+        end
+    end
+    if area == nil then
+        logWarning("Chip heap: no woodchip spawn area found, map default kept.")
+        return
+    end
+    if not SawmillAnimationInjector.installHeapSpawnerHook() then
+        logWarning("Chip heap: heap spawner could not be hooked, map default kept.")
+        return
+    end
+    placeable.silverrunDrainHeap = true
+    self.heapArea = area
+    self.drainTimer = 0
+    self.drainPending = 0
+    self.drainLineOffset = 0
+end
+
+function SawmillAnimationInjector:updateHeapDrain(dt)
+    local area = self.heapArea
+    if area == nil or not g_currentMission:getIsServer() then
+        return
+    end
+    local cfg = self.config.chipHeap
+    self.drainTimer = self.drainTimer + dt
+    if self.drainTimer < cfg.tickMs then
+        return
+    end
+    local gameMs = self.drainTimer * g_currentMission:getEffectiveTimeScale()
+    self.drainTimer = 0
+
+    local storage = self.productionPoint.storage
+    local fillType = FillType.WOODCHIPS
+    local level = storage:getFillLevel(fillType) or 0
+    -- flow of litersPerHour in-game time, never more than what is in the storage
+    self.drainPending = math.min(self.drainPending + cfg.litersPerHour * gameMs / 3600000, level)
+
+    local minLiters = 1
+    if g_densityMapHeightManager ~= nil and g_densityMapHeightManager.getMinValidLiterValue ~= nil then
+        minLiters = math.max(minLiters, g_densityMapHeightManager:getMinValidLiterValue(fillType) or 0)
+    end
+    if self.drainPending < minLiters then
+        return
+    end
+
+    -- tipping line through the middle of the spawn area (start->width), heap up to maxHeapHeight
+    local sx, sy, sz = getWorldTranslation(area.start)
+    local wx, wy, wz = getWorldTranslation(area.width)
+    local hx, hy, hz = getWorldTranslation(area.height)
+    local ox, oz = (hx - sx) * 0.5, (hz - sz) * 0.5
+    local y = math.max(sy, wy, hy) + cfg.maxHeapHeight
+    local radius = math.max(1, math.sqrt(ox * ox + oz * oz))
+
+    local dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(nil, self.drainPending, fillType,
+        sx + ox, y, sz + oz, wx + ox, y, wz + oz, 0, radius, self.drainLineOffset, true, nil, false)
+
+    if lineOffset ~= nil then
+        self.drainLineOffset = lineOffset
+    end
+    if dropped ~= nil and dropped > 0 then
+        storage:setFillLevel(math.max(0, level - dropped), fillType)
+        self.drainPending = math.max(0, self.drainPending - dropped)
+    end
 end
 
 addModEventListener(SawmillAnimationInjector)
