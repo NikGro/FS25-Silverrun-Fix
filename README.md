@@ -1,60 +1,70 @@
 # FS25-Silverrun-Fix
 
-<img src="docs/icon.png" alt="Sägewerk-Icon: Stamm fährt vom Teich über die Rampe in die Halle" width="256" align="right">
+<img src="docs/icon.png" alt="Sawmill icon: a log travels from the pond over the ramp into the hall" width="256" align="right">
 
-Addon-Mod für **Farming Simulator 25** und die Map **Silverrun Forest**. Er bringt am alten Sägewerk den Stamm-Lift aus LS22 zurück. Die Map-Dateien bleiben dabei unverändert.
+Addon mod for **Farming Simulator 25** and the **Silverrun Forest** map. It brings the FS22 log lift back to the old sawmill and fixes its woodchip heap. No map files are changed.
 
-Wie in LS22 nimmt das Sägewerk die Stämme einzeln aus dem Teich. Jeder Stamm fährt über die Kette und die Rampe hoch in die Halle, so lange, bis der Teich leer ist.
+As in FS22, the sawmill takes the logs out of the pond one by one. Each log travels over the chain and up the ramp into the hall until the pond is empty.
 
-## Was der Mod macht
+## What the mod does
 
-- **Stamm-Lift wiederhergestellt.** Die Map bringt fünf Stamm-Modelle und den Bewegungs-Clip aus LS22 mit. FS25 spielt den `<animation>`-Block der Verkaufsstation aber nicht mehr ab, er wird kommentarlos ignoriert. Der Mod spielt die 105 Keyframes dieses Clips selbst ab. Sie stammen 1:1 aus `sawmillOldAnimation.i3d.anim` der Map.
-- **Automatisches Einsammeln am Teich.** Eine Aktivierung am Ausrufezeichen ist nicht mehr nötig. Verkauft wird über dieselbe Funktion wie beim manuellen Auslösen, Preise und Lagerlimits gelten also wie gewohnt. Ist das Lager voll, bleibt der Stamm im Teich.
-- **Hackschnitzel-Haufen repariert.** In der Map schüttet der Haufen-Spawner Hackschnitzel gratis auf, während das Hackschnitzel-Lager des Sägewerks nie geleert wird. Bei 50.000 l bleibt das Sägewerk stehen (siehe [Steam-Diskussion](https://steamcommunity.com/app/2300320/discussions/0/604152469261425532/)). Der Mod schaltet das Gratis-Spawnen ab und leert stattdessen das Lager in einem gleichmäßigen Strom von 2000 l pro Spielstunde auf dieselbe Fläche. Ist der Haufen voll, füllt sich das Lager, und das Sägewerk stoppt erst dann. Partikel, Geräusch und Animation am Rohr über dem Haufen laufen nur, solange tatsächlich Hackschnitzel fließen.
-- **Gelber Holzhäcksler macht Hackschnitzel.** In der Map lagert der Häcksler neben dem Teich die Stämme nur als Holz ein (Knopf „Sell Wood“). Mit dem Mod werden hineingeworfene Stämme automatisch gehäckselt, wie in LS22. Die Hackschnitzel kommen ins Lager des Sägewerks und fließen von dort auf den Haufen. Die Menge entspricht der eines Holzhäckslers aus dem Basisspiel. In `xml/custom_sawmill_extension.xml` lässt sich das abschalten (`mode`) oder skalieren (`chipsScale`).
-- **Rollen und Förderbänder** laufen nur noch, solange eine Produktion aktiv ist.
+- **Log lift restored.** The map ships five log models and the FS22 motion clip, but FS25 no longer plays the selling station's `<animation>` block and silently ignores it. The mod plays the clip's 105 keyframes itself. They are taken 1:1 from the map's `sawmillOldAnimation.i3d.anim`.
+- **Automatic collection at the pond.** You no longer need to activate the exclamation mark. Logs are sold through the same function as the manual trigger, so prices and storage limits work as usual. If the storage is full, the log stays in the pond.
+- **Woodchip heap fixed.** In the map, the heap spawner creates woodchips for free while the sawmill's woodchip storage is never emptied. The sawmill stops once that storage reaches 50,000 l (see this [Steam discussion](https://steamcommunity.com/app/2300320/discussions/0/604152469261425532/)). The mod switches off the free spawning and instead empties the storage onto the same area in a steady flow of 2000 l per in-game hour. If the heap is full, the storage fills up and only then does the sawmill stop. The particles, sound and animation at the pipe above the heap only run while chips are actually flowing.
+- **The yellow wood chipper makes woodchips.** In the map, the chipper next to the pond only adds the logs to the storage as wood (button "Sell Wood"). With the mod, logs thrown in are chipped automatically, as in FS22. The chips go into the sawmill storage and flow from there onto the heap. The amount matches a base game wood chipper. In `xml/custom_sawmill_extension.xml` this can be switched off (`mode`) or scaled (`chipsScale`).
+- **Rollers and conveyor belts** only run while a production is active.
 
 ## Installation
 
-1. Lade die ZIP aus den [Releases](../../releases) herunter, oder packe den Ordner `FS25_Silverrun_Forest_Improved` selbst als ZIP. Dabei muss die `modDesc.xml` direkt im ZIP liegen.
-2. Kopiere die ZIP in deinen Mods-Ordner, normalerweise `Dokumente\My Games\FarmingSimulator2025\mods`. Die Datei heißt `FS25_Silverrun_Forest_Improved.zip`.
-3. Aktiviere den Mod im Spielstand mit Silverrun Forest. Die Map `FS25_silverrunForest` ist als Abhängigkeit eingetragen.
+1. Download the ZIP from the [Releases](../../releases), or zip the `FS25_Silverrun_Forest_Improved` folder yourself. The `modDesc.xml` has to be at the top level of the ZIP.
+2. Copy the ZIP into your mods folder, usually `Documents\My Games\FarmingSimulator2025\mods`. The file is called `FS25_Silverrun_Forest_Improved.zip`.
+3. Activate the mod in your Silverrun Forest savegame. The map `FS25_silverrunForest` is listed as a dependency.
 
-Im Einzelspieler funktioniert auch der entpackte Ordner. Für Multiplayer verlangt FS25 eine ZIP.
+The unpacked folder also works in singleplayer. FS25 requires a ZIP for multiplayer.
 
-Nach dem Laden sollte in `log.txt` diese Zeile stehen:
+After loading, `log.txt` should contain a line like this:
 
 ```
-[SilverrunForestImproved] Injected into 'sawmillOld': 5 roller shapes, 18 belt shapes, auto collect true, log lift slots 5.
+[SilverrunForestImproved] Injected into 'sawmillOld': 5 roller shapes, 18 belt shapes, auto collect true, log lift slots 5, chip heap drained to heap at 2000 l/h, chipper chips, automatic.
 ```
 
-## Einstellungen
+## Settings
 
-Alle Werte stehen in `xml/custom_sawmill_extension.xml`:
+All values are in `xml/custom_sawmill_extension.xml`:
 
-| Wert | Standard | Bedeutung |
+| Value | Default | Meaning |
 |---|---|---|
-| `logLift#transSpeed` | `0.5` | Abspieltempo des Lifts (Wert der Map, etwa 33 s pro Stamm) |
-| `logLift#waitThresholdAnimTime` | `3400` | Clip-Zeit in ms, nach der der nächste Stamm startet |
-| `logLift#enabled` | `true` | Stamm-Lift an/aus |
-| `woodTrigger#autoCollect` | `true` | Automatisches Einsammeln am Teich |
-| `rotationNode#rotSpeed` | `15` | Drehtempo der Rollen (Map: 8) |
-| `scrollNode#speedScale` | `1.0` | Faktor für das Tempo der Förderbänder |
-| `syncWithProduction#value` | `true` | Rollen/Bänder nur bei laufender Produktion |
+| `logLift#transSpeed` | `0.5` | Playback speed of the lift (map value, about 33 s per log) |
+| `logLift#waitThresholdAnimTime` | `3400` | Clip time in ms after which the next log starts |
+| `logLift#enabled` | `true` | Log lift on/off |
+| `woodTrigger#autoCollect` | `true` | Automatic collection at the pond |
+| `chipHeap#drainToHeap` | `true` | Storage empties onto the heap instead of free spawning |
+| `chipHeap#litersPerHour` | `2000` | Flow onto the heap per in-game hour (map value) |
+| `chipHeap#maxHeapHeight` | `8` | Maximum heap height above the area in m |
+| `chipHeap#tickMs` | `250` | Real time in ms between two flow updates |
+| `chipper#mode` | `chips` | `chips` = woodchips, anything else = map default (wood) |
+| `chipper#autoChip` | `true` | Chip logs automatically |
+| `chipper#chipsScale` | `1.0` | Factor on the base game chipper yield |
+| `rotationNode#rotSpeed` | `15` | Rotation speed of the rollers (map: 8) |
+| `scrollNode#speedScale` | `1.0` | Factor for the conveyor belt speed |
+| `syncWithProduction#value` | `true` | Rollers/belts only while a production is running |
 
-## Einschränkungen
+## Limitations
 
-- Die Lift-Animation sehen nur Einzelspieler und der Host. Andere Spieler im Multiplayer sehen nur, dass die Stämme verschwinden.
-- Es fährt immer dasselbe Stamm-Modell der Map hoch, egal wie groß der echte Stamm war. So war es auch in LS22.
-- Ist das Sägewerk nicht gekauft, geht der Erlös im Einzelspieler an deinen Hof. Im Multiplayer pausiert das automatische Einsammeln, bis jemand das Sägewerk kauft.
-- Tritt im Mod ein Laufzeitfehler auf, schaltet er sich für die Sitzung ab und schreibt eine Zeile ins `log.txt`. Das Laden des Spielstands blockiert er dabei nicht.
+- Only singleplayer players and the host see the lift animation. Other players in multiplayer only see the logs disappear.
+- The same map log model always travels up the ramp, no matter how big the real log was. FS22 did the same.
+- If the sawmill is not bought, the revenue goes to your farm in singleplayer. In multiplayer, automatic collection pauses until someone buys the sawmill.
+- In multiplayer, other players only know the storage level sent by the host. Their pipe effects run while there are chips in the storage.
+- If the mod hits a runtime error, it switches itself off for the session and writes a line to `log.txt`. It never blocks loading the savegame.
 
-## Technik
+## Technical notes
 
-`scripts/SawmillAnimationInjector.lua` meldet sich per `addModEventListener` an und sucht nach dem Laden das Placeable mit `uniqueId="sawmillOld"`. Danach:
+`scripts/SawmillAnimationInjector.lua` registers via `addModEventListener` and, after loading, looks for the placeable with `uniqueId="sawmillOld"`. Then it:
 
-- findet es die Stamm-Modelle `logAnimNode1–5` und spielt die Keyframes per `setTranslation`/`setRotation` ab,
-- verkauft über `WoodUnloadTrigger:processWood` jeweils genau einen Stamm aus dem Teich-Trigger,
-- setzt die Shader-Parameter `rotation` (Rollen) und `offsetUV` (Bänder) je nach Produktionsstatus.
+- finds the log models `logAnimNode1–5` and plays the keyframes with `setTranslation`/`setRotation`,
+- sells exactly one log at a time from the pond trigger through `WoodUnloadTrigger:processWood`,
+- sets the shader parameters `rotation` (rollers) and `offsetUV` (belts) depending on the production state,
+- replaces `processWood` on the chipper trigger instance and adds woodchips to the production storage,
+- skips `PlaceableHeapSpawner.onUpdateTick` for this sawmill only and tips the storage onto the heap with `DensityMapHeightUtil.tipToGroundAroundLine`.
 
-Das Icon (`docs/icon.svg`) ist eine eigene Zeichnung.
+The icon (`docs/icon.svg`) is an original drawing.
