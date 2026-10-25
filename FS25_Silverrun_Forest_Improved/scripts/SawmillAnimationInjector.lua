@@ -7,6 +7,9 @@
 --      (calls WoodUnloadTrigger:processWood, the same function the manual
 --      "sell" activation uses, so prices, storage limits and the existing
 --      log lift animation behave exactly like vanilla),
+--   4) turns the yellow wood chipper next to the pond into a real chipper: logs
+--      become WOODCHIPS in the sawmill storage (the map's heap spawner puts them
+--      on the chip heap) instead of WOOD, optionally fully automatic like FS22,
 --   2) drives the shader based roller/belt animations of the conveyors and
 --      couples them to the production state,
 --   3) restores the FS22 log lift: logs leave the pond one by one and a trunk
@@ -73,6 +76,7 @@ function SawmillAnimationInjector:loadConfig()
         woodTriggerNodeName = "woodTrigger",
         autoCollect = true,
         intervalMs = 1000,
+        chipper = {triggerNodeName = "woodTriggerCrusher", mode = "chips", autoChip = true, intervalMs = 1500, chipsScale = 1.0},
         logLift = {enabled = false, nodePrefix = "logAnimNode", nodeCount = 5, speedScale = 0.5, waitThreshold = 3400, keys = {}, duration = 0}
     }
 
@@ -128,6 +132,13 @@ function SawmillAnimationInjector:loadConfig()
     cfg.woodTriggerNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".woodTrigger#triggerNodeName"), cfg.woodTriggerNodeName)
     cfg.autoCollect = Utils.getNoNil(getXMLBool(xmlFile, base .. ".woodTrigger#autoCollect"), true)
     cfg.intervalMs = math.max(250, Utils.getNoNil(getXMLInt(xmlFile, base .. ".woodTrigger#intervalMs"), 1000))
+
+    local ch = cfg.chipper
+    ch.triggerNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipper#triggerNodeName"), ch.triggerNodeName)
+    ch.mode = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipper#mode"), ch.mode)
+    ch.autoChip = Utils.getNoNil(getXMLBool(xmlFile, base .. ".chipper#autoChip"), ch.autoChip)
+    ch.intervalMs = math.max(250, Utils.getNoNil(getXMLInt(xmlFile, base .. ".chipper#intervalMs"), ch.intervalMs))
+    ch.chipsScale = math.max(0, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipper#chipsScale"), ch.chipsScale))
 
     local liftKey = base .. ".logLift"
     if hasXMLProperty(xmlFile, liftKey) then
@@ -187,6 +198,10 @@ function SawmillAnimationInjector:loadMap(filename)
     self.searchTimer = 0
     self.searchTime = 0
     self.collectTimer = 0
+    self.chipTimer = 0
+    self.chipperTrigger = nil
+    self.chipperOriginalProcess = nil
+    self.chipperOriginalText = nil
     self.lastRunningState = nil
     self.warnedFarm = false
     self.liftSlots = {}
@@ -203,6 +218,7 @@ function SawmillAnimationInjector:deleteMap()
             end
         end
     end
+    self:restoreChipper()
     self.placeable = nil
     self.productionPoint = nil
     self.woodTrigger = nil
@@ -251,6 +267,7 @@ function SawmillAnimationInjector:updateInternal(dt)
     self:updateAnimations()
     self:updateLogLift(dt)
     self:updateAutoCollect(dt)
+    self:updateAutoChip(dt)
 end
 
 -- -----------------------------------------------------------------------------
@@ -363,6 +380,9 @@ function SawmillAnimationInjector:tryInject()
         logWarning("Pond wood trigger '%s' not found, auto collection disabled.", self.config.woodTriggerNodeName)
     end
 
+    -- 2b) yellow wood chipper
+    self:setupChipper(unloadingStation)
+
     -- 3) log lift trunk models (logAnimNode1..n, already part of the map's placeable)
     self.liftSlots = {}
     local lift = self.config.logLift
@@ -382,9 +402,10 @@ function SawmillAnimationInjector:tryInject()
 
     self.isInjected = true
     self.lastRunningState = nil
-    logInfo("Injected into '%s': %d roller shapes, %d belt shapes, auto collect %s, log lift slots %d.",
+    logInfo("Injected into '%s': %d roller shapes, %d belt shapes, auto collect %s, log lift slots %d, chipper %s.",
         self.config.uniqueId, #self.rotationShapes, #self.scrollShapes,
-        tostring(self.woodTrigger ~= nil and self.config.autoCollect), #self.liftSlots)
+        tostring(self.woodTrigger ~= nil and self.config.autoCollect), #self.liftSlots,
+        self.chipperTrigger ~= nil and (self.config.chipper.mode .. (self.config.chipper.autoChip and ", automatic" or "")) or "unchanged")
 end
 
 -- -----------------------------------------------------------------------------
@@ -627,6 +648,146 @@ function SawmillAnimationInjector:updateAutoCollect(dt)
         return
     end
     trigger:processWood(farmId)
+end
+
+-- -----------------------------------------------------------------------------
+-- Wood chipper (yellow crusher next to the pond)
+-- -----------------------------------------------------------------------------
+
+function SawmillAnimationInjector.getText(key, fallback)
+    local env = g_i18n.modEnvironments ~= nil and g_i18n.modEnvironments[SawmillAnimationInjector.MOD_NAME] or nil
+    local text
+    if env ~= nil then
+        text = env:getText(key)
+    else
+        text = g_i18n:getText(key)
+    end
+    if text == nil or text == "" or string.find(text, "Missing", 1, true) == 1 then
+        return fallback
+    end
+    return text
+end
+
+function SawmillAnimationInjector:setupChipper(unloadingStation)
+    local cfg = self.config.chipper
+    self.chipperTrigger = nil
+    if cfg.mode ~= "chips" or unloadingStation == nil or type(unloadingStation.unloadTriggers) ~= "table" then
+        return
+    end
+    if FillType == nil or FillType.WOODCHIPS == nil or self.productionPoint.storage == nil then
+        logWarning("Chipper: WOODCHIPS or sawmill storage not available, chipper unchanged.")
+        return
+    end
+
+    local trigger = nil
+    for _, t in ipairs(unloadingStation.unloadTriggers) do
+        if t.woodInTrigger ~= nil and t.processWood ~= nil and t.triggerNode ~= nil and t.triggerNode ~= 0
+            and getName(t.triggerNode) == cfg.triggerNodeName then
+            trigger = t
+            break
+        end
+    end
+    if trigger == nil then
+        logWarning("Chipper trigger '%s' not found, chipper unchanged.", cfg.triggerNodeName)
+        return
+    end
+
+    -- instance override: the client keeps the original behaviour (it sends the event to the
+    -- server), the server chips instead of selling. Manual activation and the network event
+    -- both end up here.
+    local injector = self
+    local original = trigger.processWood
+    self.chipperOriginalProcess = original
+    trigger.processWood = function(trig, farmId, noEventSend)
+        if not trig.isServer or injector.chipperTrigger ~= trig then
+            return original(trig, farmId, noEventSend)
+        end
+        injector:chipWood(trig, farmId)
+    end
+
+    if trigger.activatable ~= nil then
+        self.chipperOriginalText = trigger.activatable.activateText
+        trigger.activatable.activateText = SawmillAnimationInjector.getText("silverrun_action_chipWood", "Chip wood")
+    end
+
+    self.chipperTrigger = trigger
+end
+
+function SawmillAnimationInjector:restoreChipper()
+    local trigger = self.chipperTrigger
+    if trigger ~= nil then
+        if self.chipperOriginalProcess ~= nil then
+            trigger.processWood = self.chipperOriginalProcess
+        end
+        if trigger.activatable ~= nil and self.chipperOriginalText ~= nil then
+            trigger.activatable.activateText = self.chipperOriginalText
+        end
+    end
+    self.chipperTrigger = nil
+    self.chipperOriginalProcess = nil
+    self.chipperOriginalText = nil
+end
+
+-- server: every log in the chipper becomes woodchips in the sawmill storage
+function SawmillAnimationInjector:chipWood(trigger, farmId)
+    local storage = self.productionPoint ~= nil and self.productionPoint.storage or nil
+    if storage == nil then
+        return
+    end
+    local fillType = FillType.WOODCHIPS
+    local mission = g_currentMission
+    local scale = self.config.chipper.chipsScale
+    local totalChips, numLogs = 0, 0
+
+    for nodeId, _ in pairs(trigger.woodInTrigger) do
+        if entityExists(nodeId) and getHasClassId(nodeId, ClassIds.MESH_SPLIT_SHAPE) then
+            local splitType = g_splitShapeManager:getSplitTypeByIndex(getSplitType(nodeId))
+            local liters = getVolume(nodeId) * ((splitType ~= nil and splitType.volumeToLiter) or 1000)
+            local perLiter = splitType ~= nil and splitType.woodChipsPerLiter or 1
+            if perLiter == nil or perLiter <= 0 then
+                perLiter = 1
+            end
+            local chips = liters * perLiter * scale
+
+            local free = storage:getFreeCapacity(fillType)
+            if free == nil or free < chips * 0.9 then
+                break -- chip storage full, the log stays in the chipper
+            end
+            storage:setFillLevel(storage:getFillLevel(fillType) + math.min(chips, free), fillType)
+            totalChips = totalChips + chips
+            numLogs = numLogs + 1
+
+            local treeObject = mission:getNodeObject(nodeId)
+            if treeObject ~= nil then
+                treeObject:delete()
+            else
+                delete(nodeId)
+            end
+            trigger.woodInTrigger[nodeId] = nil
+        else
+            trigger.woodInTrigger[nodeId] = nil
+        end
+    end
+
+    if numLogs > 0 then
+        logInfo("Chipper: %d log(s) -> %.0f l woodchips.", numLogs, totalChips)
+    end
+end
+
+function SawmillAnimationInjector:updateAutoChip(dt)
+    local trigger = self.chipperTrigger
+    if trigger == nil or not self.config.chipper.autoChip or not g_currentMission:getIsServer() then
+        return
+    end
+    self.chipTimer = self.chipTimer - dt
+    if self.chipTimer > 0 then
+        return
+    end
+    self.chipTimer = self.config.chipper.intervalMs
+    if next(trigger.woodInTrigger) == nil then
+        return
+    end
+    self:chipWood(trigger, self.placeable:getOwnerFarmId())
 end
 
 addModEventListener(SawmillAnimationInjector)

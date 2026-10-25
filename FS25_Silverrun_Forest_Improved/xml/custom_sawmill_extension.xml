@@ -30,6 +30,13 @@
              world position approx. x=297 y=35 z=-443). This switches it to automatic collection. -->
         <woodTrigger triggerNodeName="woodTrigger" autoCollect="true" intervalMs="1000" />
 
+        <!-- Yellow wood chipper next to the pond (node "woodTriggerCrusher"). In the map it only adds the logs
+             as WOOD to the sawmill storage ("Sell wood"). With mode="chips" the logs become WOODCHIPS
+             in the sawmill storage instead, and the map's heap spawner puts them on the chip heap.
+             chipsScale multiplies the base game wood crusher yield (liters chips per liter wood of the species).
+             autoChip: logs are chipped automatically after they land in the chipper (like FS22). -->
+        <chipper triggerNodeName="woodTriggerCrusher" mode="chips" autoChip="true" intervalMs="1500" chipsScale="1.0" />
+
         <!-- Log lift: one log after another leaves the pond, runs over the chain, up the ramp into the hall.
              The map ships 5 trunk models (logAnimNode1-5) and the clip from FS22, but FS25 no longer plays
              the <animation> block of the selling station. The keyframes below are read 1:1 from the map's

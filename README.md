@@ -10,6 +10,7 @@ Wie in LS22 nimmt das Sägewerk die Stämme einzeln aus dem Teich. Jeder Stamm f
 
 - **Stamm-Lift wiederhergestellt.** Die Map bringt fünf Stamm-Modelle und den Bewegungs-Clip aus LS22 mit. FS25 spielt den `<animation>`-Block der Verkaufsstation aber nicht mehr ab, er wird kommentarlos ignoriert. Der Mod spielt die 105 Keyframes dieses Clips selbst ab. Sie stammen 1:1 aus `sawmillOldAnimation.i3d.anim` der Map.
 - **Automatisches Einsammeln am Teich.** Eine Aktivierung am Ausrufezeichen ist nicht mehr nötig. Verkauft wird über dieselbe Funktion wie beim manuellen Auslösen, Preise und Lagerlimits gelten also wie gewohnt. Ist das Lager voll, bleibt der Stamm im Teich.
+- **Gelber Holzhäcksler macht Hackschnitzel.** In der Map lagert der Häcksler neben dem Teich die Stämme nur als Holz ein (Knopf „Sell Wood“). Mit dem Mod werden hineingeworfene Stämme automatisch gehäckselt, wie in LS22. Die Hackschnitzel kommen ins Lager des Sägewerks, und die Map legt sie von dort auf den Hackschnitzel-Haufen. Die Menge entspricht der eines Holzhäckslers aus dem Basisspiel. In `xml/custom_sawmill_extension.xml` lässt sich das abschalten (`mode`) oder skalieren (`chipsScale`).
 - **Rollen und Förderbänder** laufen nur noch, solange eine Produktion aktiv ist.
 
 ## Installation
