@@ -44,7 +44,7 @@
              If the spawner does not behave as expected, the mod falls back to its own tipping below the pipe
              (outletNodeName, litersPerHour, maxHeapHeight, tickMs are used for that fallback only).
              debug: log line every 30 s. -->
-        <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" outletNodeName="effectSmoke" debug="true" />
+        <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" outletNodeName="effectSmoke" debug="false" />
 
         <!-- Log lift: one log after another leaves the pond, runs over the chain, up the ramp into the hall.
              The map ships 5 trunk models (logAnimNode1-5) and the clip from FS22, but FS25 no longer plays
