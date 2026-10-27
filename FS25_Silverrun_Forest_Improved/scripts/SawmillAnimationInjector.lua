@@ -81,7 +81,7 @@ function SawmillAnimationInjector:loadConfig()
         woodTriggerNodeName = "woodTrigger",
         autoCollect = true,
         intervalMs = 1000,
-        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", dropLineLength = 0.5},
+        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", dropLineLength = 2.0, debug = true},
         chipper = {triggerNodeName = "woodTriggerCrusher", mode = "chips", autoChip = true, intervalMs = 1500, chipsScale = 1.0},
         logLift = {enabled = false, nodePrefix = "logAnimNode", nodeCount = 5, speedScale = 0.5, waitThreshold = 3400, keys = {}, duration = 0}
     }
@@ -146,6 +146,7 @@ function SawmillAnimationInjector:loadConfig()
     hp.tickMs = math.max(50, Utils.getNoNil(getXMLInt(xmlFile, base .. ".chipHeap#tickMs"), hp.tickMs))
     hp.outletNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipHeap#outletNodeName"), hp.outletNodeName)
     hp.dropLineLength = math.max(0.1, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipHeap#dropLineLength"), hp.dropLineLength))
+    hp.debug = Utils.getNoNil(getXMLBool(xmlFile, base .. ".chipHeap#debug"), hp.debug)
 
     local ch = cfg.chipper
     ch.triggerNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipper#triggerNodeName"), ch.triggerNodeName)
@@ -999,6 +1000,19 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
 
     if lineOffset ~= nil then
         self.drainLineOffset = lineOffset
+    end
+
+    if cfg.debug then
+        self.debugDropped = (self.debugDropped or 0) + (dropped or 0)
+        self.debugRequested = (self.debugRequested or 0) + self.drainPending
+        if g_time - (self.lastDebugTime or -math.huge) > 30000 then
+            self.lastDebugTime = g_time
+            logInfo("Chip heap debug: storage %.0f l, requested %.1f l, dropped %.1f l (last 30 s), line %.2f %.2f %.2f -> %.2f %.2f %.2f, outlet %s, radius %.1f",
+                level, self.debugRequested, self.debugDropped, cx - dx, y, cz - dz, cx + dx, y, cz + dz,
+                tostring(self.heapOutletNode ~= nil), radius)
+            self.debugDropped = 0
+            self.debugRequested = 0
+        end
     end
     if dropped ~= nil and dropped > 0 then
         storage:setFillLevel(math.max(0, level - dropped), fillType)
