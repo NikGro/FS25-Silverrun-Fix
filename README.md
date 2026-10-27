@@ -42,9 +42,8 @@ All values are in `xml/custom_sawmill_extension.xml`:
 | `chipHeap#litersPerHour` | `2000` | Flow onto the heap per in-game hour (map value) |
 | `chipHeap#maxHeapHeight` | `8` | Maximum heap height above the area in m |
 | `chipHeap#tickMs` | `250` | Real time in ms between two flow updates |
-| `chipHeap#outletNodeName` | `effectSmoke` | Map node of the pipe outlet; chips drop straight below it |
+| `chipHeap#outletNodeName` | `effectSmoke` | Map node of the pipe outlet; the tipping line is centred below it |
 | `chipHeap#debug` | `false` | Diagnostic log line every 30 s |
-| `chipHeap#dropLineLength` | `2.0` | Length of the drop line below the outlet in m |
 | `chipper#mode` | `chips` | `chips` = woodchips, anything else = map default (wood) |
 | `chipper#autoChip` | `true` | Chip logs automatically |
 | `chipper#chipsScale` | `1.0` | Factor on the base game chipper yield |

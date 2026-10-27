@@ -81,7 +81,7 @@ function SawmillAnimationInjector:loadConfig()
         woodTriggerNodeName = "woodTrigger",
         autoCollect = true,
         intervalMs = 1000,
-        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", dropLineLength = 2.0, debug = false},
+        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", debug = false},
         chipper = {triggerNodeName = "woodTriggerCrusher", mode = "chips", autoChip = true, intervalMs = 1500, chipsScale = 1.0},
         logLift = {enabled = false, nodePrefix = "logAnimNode", nodeCount = 5, speedScale = 0.5, waitThreshold = 3400, keys = {}, duration = 0}
     }
@@ -145,7 +145,6 @@ function SawmillAnimationInjector:loadConfig()
     hp.maxHeapHeight = math.max(0.5, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipHeap#maxHeapHeight"), hp.maxHeapHeight))
     hp.tickMs = math.max(50, Utils.getNoNil(getXMLInt(xmlFile, base .. ".chipHeap#tickMs"), hp.tickMs))
     hp.outletNodeName = Utils.getNoNil(getXMLString(xmlFile, base .. ".chipHeap#outletNodeName"), hp.outletNodeName)
-    hp.dropLineLength = math.max(0.1, Utils.getNoNil(getXMLFloat(xmlFile, base .. ".chipHeap#dropLineLength"), hp.dropLineLength))
     hp.debug = Utils.getNoNil(getXMLBool(xmlFile, base .. ".chipHeap#debug"), hp.debug)
 
     local ch = cfg.chipper
@@ -240,9 +239,6 @@ function SawmillAnimationInjector:deleteMap()
     self:restoreChipper()
     if self.placeable ~= nil then
         self.placeable.silverrunDrainHeap = nil
-    end
-    if self.heapArea ~= nil then
-        self:setHeapEffectsActive(true)
     end
     self.heapArea = nil
     self.placeable = nil
@@ -977,25 +973,23 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
         return
     end
 
-    -- short tipping line straight below the pipe outlet (or the middle of the area without an outlet node);
-    -- the heap may grow up to maxHeapHeight above the area, as in version 1.3
+    -- tipping line exactly as in version 1.3 (through the spawn area, start->width direction, heap up to
+    -- maxHeapHeight), only moved so that its middle lies straight below the pipe outlet
     local sx, sy, sz = getWorldTranslation(area.start)
     local wx, wy, wz = getWorldTranslation(area.width)
     local hx, hy, hz = getWorldTranslation(area.height)
     local ox, oz = (hx - sx) * 0.5, (hz - sz) * 0.5
-    local radius = math.max(1, math.sqrt(ox * ox + oz * oz))
-    local cx, cz = (wx + hx) * 0.5, (wz + hz) * 0.5
     local y = math.max(sy, wy, hy) + cfg.maxHeapHeight
+    local radius = math.max(1, math.sqrt(ox * ox + oz * oz))
+    local l1x, l1z, l2x, l2z = sx + ox, sz + oz, wx + ox, wz + oz
     if self.heapOutletNode ~= nil and entityExists(self.heapOutletNode) then
         local px, _, pz = getWorldTranslation(self.heapOutletNode)
-        cx, cz = px, pz
+        local mx, mz = (l1x + l2x) * 0.5, (l1z + l2z) * 0.5
+        l1x, l1z, l2x, l2z = l1x + px - mx, l1z + pz - mz, l2x + px - mx, l2z + pz - mz
     end
-    local dx, dz = wx - sx, wz - sz
-    local len = math.max(0.001, math.sqrt(dx * dx + dz * dz))
-    dx, dz = dx / len * cfg.dropLineLength * 0.5, dz / len * cfg.dropLineLength * 0.5
 
     local dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(nil, self.drainPending, fillType,
-        cx - dx, y, cz - dz, cx + dx, y, cz + dz, 0, radius, self.drainLineOffset, true, nil, false)
+        l1x, y, l1z, l2x, y, l2z, 0, radius, self.drainLineOffset, true, nil, false)
 
     if lineOffset ~= nil then
         self.drainLineOffset = lineOffset
@@ -1007,7 +1001,7 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
         if g_time - (self.lastDebugTime or -math.huge) > 30000 then
             self.lastDebugTime = g_time
             logInfo("Chip heap debug: storage %.0f l, requested %.1f l, dropped %.1f l (last 30 s), line %.2f %.2f %.2f -> %.2f %.2f %.2f, outlet %s, radius %.1f",
-                level, self.debugRequested, self.debugDropped, cx - dx, y, cz - dz, cx + dx, y, cz + dz,
+                level, self.debugRequested, self.debugDropped, l1x, y, l1z, l2x, y, l2z,
                 tostring(self.heapOutletNode ~= nil), radius)
             self.debugDropped = 0
             self.debugRequested = 0
