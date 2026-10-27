@@ -988,12 +988,11 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
         l1x, l1z, l2x, l2z = l1x + px - mx, l1z + pz - mz, l2x + px - mx, l2z + pz - mz
     end
 
-    local dropped, lineOffset = DensityMapHeightUtil.tipToGroundAroundLine(nil, self.drainPending, fillType,
-        l1x, y, l1z, l2x, y, l2z, 0, radius, self.drainLineOffset, true, nil, false)
-
-    if lineOffset ~= nil then
-        self.drainLineOffset = lineOffset
-    end
+    -- always start at the middle of the line (below the pipe). The returned line offset is meant for
+    -- moving trailers and would walk the drop point along the line, which builds a strip instead of a heap.
+    local lineLength = math.sqrt((l2x - l1x) ^ 2 + (l2z - l1z) ^ 2)
+    local dropped = DensityMapHeightUtil.tipToGroundAroundLine(nil, self.drainPending, fillType,
+        l1x, y, l1z, l2x, y, l2z, 0, radius, lineLength * 0.5, true, nil, false)
 
     if cfg.debug then
         self.debugDropped = (self.debugDropped or 0) + (dropped or 0)
