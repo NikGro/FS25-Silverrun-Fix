@@ -37,14 +37,13 @@
              autoChip: logs are chipped automatically after they land in the chipper (like FS22). -->
         <chipper triggerNodeName="woodTriggerCrusher" mode="chips" autoChip="true" intervalMs="1500" chipsScale="1.0" />
 
-        <!-- Woodchip heap: in the map the heap spawner creates chips for free (2000 l per in-game hour) while the
-             sawmill's own woodchip storage is never emptied, so the sawmill stops when it reaches 50 000 l.
-             With drainToHeap="true" the free spawning is switched off and the storage is emptied onto the
-             same heap area instead, in a continuous flow of litersPerHour (in-game hours).
-             The tipping line runs through the spawn area as in the map and is moved so that its middle lies
-             straight below the pipe outlet (node outletNodeName, the map's smoke effect node above the heap).
-             maxHeapHeight: how high the heap may grow above the area (m). debug: log line every 30 s. If the heap is full the storage
-             fills up and the sawmill stops, as in reality. tickMs: real time between two small drops. -->
+        <!-- Woodchip heap: in the map the heap spawner creates chips for free while the sawmill's own woodchip
+             storage is never emptied, so the sawmill stops when it reaches 50 000 l.
+             With drainToHeap="true" the map's heap spawner keeps working at its own place and rate, but it only
+             gets the chips that are in the storage, and what it drops is taken from the storage.
+             If the spawner does not behave as expected, the mod falls back to its own tipping below the pipe
+             (outletNodeName, litersPerHour, maxHeapHeight, tickMs are used for that fallback only).
+             debug: log line every 30 s. -->
         <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" outletNodeName="effectSmoke" debug="true" />
 
         <!-- Log lift: one log after another leaves the pond, runs over the chain, up the ramp into the hall.

@@ -10,7 +10,7 @@ As in FS22, the sawmill takes the logs out of the pond one by one. Each log trav
 
 - **Log lift restored.** The map ships five log models and the FS22 motion clip, but FS25 no longer plays the selling station's `<animation>` block and silently ignores it. The mod plays the clip's 105 keyframes itself. They are taken 1:1 from the map's `sawmillOldAnimation.i3d.anim`.
 - **Automatic collection at the pond.** You no longer need to activate the exclamation mark. Logs are sold through the same function as the manual trigger, so prices and storage limits work as usual. If the storage is full, the log stays in the pond.
-- **Woodchip heap fixed.** In the map, the heap spawner creates woodchips for free while the sawmill's woodchip storage is never emptied. The sawmill stops once that storage reaches 50,000 l (see this [Steam discussion](https://steamcommunity.com/app/2300320/discussions/0/604152469261425532/)). The mod switches off the free spawning and instead empties the storage straight below the pipe outlet in a steady flow of 2000 l per in-game hour. If the heap is full, the storage fills up and only then does the sawmill stop. The particles, sound and animation at the pipe above the heap only run while chips are actually flowing.
+- **Woodchip heap fixed.** In the map, the heap spawner creates woodchips for free while the sawmill's woodchip storage is never emptied. The sawmill stops once that storage reaches 50,000 l (see this [Steam discussion](https://steamcommunity.com/app/2300320/discussions/0/604152469261425532/)). The mod keeps the map's own heap spawner (same place, same flow of 2000 l per in-game hour), but it only gets the chips that are in the storage, and what it drops is taken from the storage. If the heap is full, the storage fills up and only then does the sawmill stop. The particles, sound and animation at the pipe above the heap only run while chips are actually flowing.
 - **The yellow wood chipper makes woodchips.** In the map, the chipper next to the pond only adds the logs to the storage as wood (button "Sell Wood"). With the mod, logs thrown in are chipped automatically, as in FS22. The chips go into the sawmill storage and flow from there onto the heap. The amount matches a base game wood chipper. In `xml/custom_sawmill_extension.xml` this can be switched off (`mode`) or scaled (`chipsScale`).
 - **Rollers and conveyor belts** only run while a production is active.
 
@@ -67,6 +67,6 @@ All values are in `xml/custom_sawmill_extension.xml`:
 - sells exactly one log at a time from the pond trigger through `WoodUnloadTrigger:processWood`,
 - sets the shader parameters `rotation` (rollers) and `offsetUV` (belts) depending on the production state,
 - replaces `processWood` on the chipper trigger instance and adds woodchips to the production storage,
-- skips `PlaceableHeapSpawner.onUpdateTick` for this sawmill only and tips the storage onto the heap with `DensityMapHeightUtil.tipToGroundAroundLine`.
+- wraps `PlaceableHeapSpawner.onUpdateTick` for this sawmill only: while the map spawner runs, `DensityMapHeightUtil.tipToGroundAroundLine` is limited to the storage level and the dropped amount is taken from the storage (own tipping below the pipe as fallback).
 
 The icon (`docs/icon.svg`) is an original drawing.

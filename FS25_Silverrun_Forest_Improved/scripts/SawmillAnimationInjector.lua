@@ -12,7 +12,7 @@
 --      on the chip heap) instead of WOOD, optionally fully automatic like FS22,
 --   5) fixes the woodchip heap: the map's heap spawner makes chips for free and
 --      never empties the sawmill storage (the sawmill stops at 50 000 l). The
---      storage is now emptied onto the heap in a continuous flow instead,
+--      map spawner now only gets what is in the storage (same place, same flow),
 --   2) drives the shader based roller/belt animations of the conveyors and
 --      couples them to the production state,
 --   3) restores the FS22 log lift: logs leave the pond one by one and a trunk
@@ -32,6 +32,7 @@ SawmillAnimationInjector.MAX_SEARCH_TIME = 120000 -- give up after 2 minutes
 SawmillAnimationInjector.LOG_PREFIX = "[SilverrunForestImproved] "
 SawmillAnimationInjector.HEAP_EFFECT_HOLD_MS = 3000 -- pipe effects keep running this long after the last drop
 SawmillAnimationInjector.HEAP_EFFECT_MIN_LITERS = 1
+SawmillAnimationInjector.METER_DETECT_MS = 60000 -- fallback if the map spawner never tips within this time
 
 local function logInfo(fmt, ...)
     print(SawmillAnimationInjector.LOG_PREFIX .. string.format(fmt, ...))
@@ -827,11 +828,12 @@ function SawmillAnimationInjector.installHeapSpawnerHook()
         return SawmillAnimationInjector.heapHookInstalled == true
     end
     -- event listeners call PlaceableHeapSpawner.onUpdateTick by name, so the wrapper is used for every
-    -- heap spawner; it only skips the free spawning of the placeable this mod drains itself
+    -- heap spawner; only the sawmill this mod handles is metered, all others run unchanged
     local original = PlaceableHeapSpawner.onUpdateTick
     PlaceableHeapSpawner.onUpdateTick = function(placeable, ...)
-        if placeable.silverrunDrainHeap then
-            return
+        local injector = placeable.silverrunDrainHeap
+        if injector ~= nil and injector ~= false then
+            return injector:meteredSpawnerTick(original, placeable, ...)
         end
         return original(placeable, ...)
     end
@@ -868,8 +870,13 @@ function SawmillAnimationInjector:setupHeapDrain(placeable)
         logWarning("Chip heap: heap spawner could not be hooked, map default kept.")
         return
     end
-    placeable.silverrunDrainHeap = true
+    placeable.silverrunDrainHeap = self
     self.heapArea = area
+    -- "metered": the map's own heap spawner keeps spawning at its place and rate, but only what is in
+    -- the storage; "own": fallback with this mod's tipping if the spawner does not tip as expected
+    self.heapMode = "metered"
+    self.meterTickTime = 0
+    self.meterTipCalls = 0
 
     -- drop point: straight below the pipe outlet (the map's smoke/particle node above the heap),
     -- falls back to the middle of the spawn area
@@ -938,13 +945,90 @@ function SawmillAnimationInjector:updateHeapEffects()
     self:setHeapEffectsActive(active)
 end
 
+-- server: let the map's heap spawner run, but only with chips that are in the sawmill storage.
+-- The spawner tips through DensityMapHeightUtil.tipToGroundAroundLine; during its tick that function
+-- is wrapped so it can never drop more than the storage holds, and what it drops is taken from it.
+function SawmillAnimationInjector:meteredSpawnerTick(original, placeable, dt, ...)
+    if self.heapMode ~= "metered" or self.heapArea == nil then
+        return -- own tipping (or not set up): no free spawning
+    end
+    if not g_currentMission:getIsServer() then
+        return original(placeable, dt, ...)
+    end
+
+    local storage = self.productionPoint.storage
+    local fillType = FillType.WOODCHIPS
+    local level = storage:getFillLevel(fillType) or 0
+    local area = self.heapArea
+    if level <= 0.001 then
+        area.amountToTip = 0
+        -- keep the placeable ticking, otherwise it would never notice new chips
+        if placeable.raiseActive ~= nil then
+            placeable:raiseActive()
+        end
+        return
+    end
+
+    local util = DensityMapHeightUtil
+    local realTip = util.tipToGroundAroundLine
+    local remaining = level
+    local droppedTotal = 0
+    local injector = self
+    util.tipToGroundAroundLine = function(vehicle, delta, tipFillType, ...)
+        if tipFillType ~= fillType then
+            return realTip(vehicle, delta, tipFillType, ...)
+        end
+        injector.meterTipCalls = injector.meterTipCalls + 1
+        local allowed = math.min(delta, remaining)
+        if allowed <= 0 then
+            return 0, select(9, ...)
+        end
+        local dropped, lineOffset = realTip(vehicle, allowed, tipFillType, ...)
+        dropped = dropped or 0
+        remaining = remaining - dropped
+        droppedTotal = droppedTotal + dropped
+        return dropped, lineOffset
+    end
+    local ok, err = pcall(original, placeable, dt, ...)
+    util.tipToGroundAroundLine = realTip
+    if not ok then
+        error(err)
+    end
+
+    if droppedTotal > 0 then
+        storage:setFillLevel(math.max(0, level - droppedTotal), fillType)
+        self.lastDropTime = g_time
+    end
+    -- no backlog: the spawner must not save up what it could not get from the storage
+    if type(area.amountToTip) == "number" then
+        area.amountToTip = math.min(area.amountToTip, math.max(0, level - droppedTotal))
+    end
+
+    if self.config.chipHeap.debug then
+        self.debugDropped = (self.debugDropped or 0) + droppedTotal
+        if g_time - (self.lastDebugTime or -math.huge) > 30000 then
+            self.lastDebugTime = g_time
+            logInfo("Chip heap debug (map spawner, metered): storage %.0f l, dropped %.1f l (last 30 s), tip calls %d",
+                level, self.debugDropped, self.meterTipCalls)
+            self.debugDropped = 0
+        end
+    end
+
+    -- safety: if the spawner never tips through the wrapped function, switch to own tipping
+    self.meterTickTime = self.meterTickTime + (dt or 0)
+    if self.meterTipCalls == 0 and self.meterTickTime > SawmillAnimationInjector.METER_DETECT_MS then
+        self.heapMode = "own"
+        logWarning("Chip heap: map heap spawner does not tip as expected, using own tipping below the pipe.")
+    end
+end
+
 function SawmillAnimationInjector:updateHeapDrain(dt)
     local area = self.heapArea
     if area == nil then
         return
     end
     self:updateHeapEffects()
-    if not g_currentMission:getIsServer() then
+    if not g_currentMission:getIsServer() or self.heapMode ~= "own" then
         return
     end
     local cfg = self.config.chipHeap
