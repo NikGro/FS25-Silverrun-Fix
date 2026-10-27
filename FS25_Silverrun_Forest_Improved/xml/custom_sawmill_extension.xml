@@ -42,10 +42,10 @@
              With drainToHeap="true" the free spawning is switched off and the storage is emptied onto the
              same heap area instead, in a continuous flow of litersPerHour (in-game hours).
              The chips drop straight below the pipe outlet (node outletNodeName, the map's smoke effect node above
-             the heap) along a short line of dropLineLength m; the heap grows up to the outlet at most.
-             maxHeapHeight: limit above the area (m) if the outlet node is missing. If the heap is full the storage
+             the heap) along a short line of dropLineLength m.
+             maxHeapHeight: how high the heap may grow above the area (m). debug: log line every 30 s. If the heap is full the storage
              fills up and the sawmill stops, as in reality. tickMs: real time between two small drops. -->
-        <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" outletNodeName="effectSmoke" dropLineLength="2.0" debug="true" />
+        <chipHeap drainToHeap="true" litersPerHour="2000" maxHeapHeight="8" tickMs="250" outletNodeName="effectSmoke" dropLineLength="2.0" debug="false" />
 
         <!-- Log lift: one log after another leaves the pond, runs over the chain, up the ramp into the hall.
              The map ships 5 trunk models (logAnimNode1-5) and the clip from FS22, but FS25 no longer plays

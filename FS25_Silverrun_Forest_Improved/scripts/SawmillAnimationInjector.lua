@@ -81,7 +81,7 @@ function SawmillAnimationInjector:loadConfig()
         woodTriggerNodeName = "woodTrigger",
         autoCollect = true,
         intervalMs = 1000,
-        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", dropLineLength = 2.0, debug = true},
+        chipHeap = {drainToHeap = true, litersPerHour = 2000, maxHeapHeight = 8, tickMs = 250, outletNodeName = "effectSmoke", dropLineLength = 2.0, debug = false},
         chipper = {triggerNodeName = "woodTriggerCrusher", mode = "chips", autoChip = true, intervalMs = 1500, chipsScale = 1.0},
         logLift = {enabled = false, nodePrefix = "logAnimNode", nodeCount = 5, speedScale = 0.5, waitThreshold = 3400, keys = {}, duration = 0}
     }
@@ -977,8 +977,8 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
         return
     end
 
-    -- short tipping line straight below the pipe outlet; the heap grows up to the outlet
-    -- (or maxHeapHeight above the area without an outlet node) and spreads within the spawn area
+    -- short tipping line straight below the pipe outlet (or the middle of the area without an outlet node);
+    -- the heap may grow up to maxHeapHeight above the area, as in version 1.3
     local sx, sy, sz = getWorldTranslation(area.start)
     local wx, wy, wz = getWorldTranslation(area.width)
     local hx, hy, hz = getWorldTranslation(area.height)
@@ -987,9 +987,8 @@ function SawmillAnimationInjector:updateHeapDrain(dt)
     local cx, cz = (wx + hx) * 0.5, (wz + hz) * 0.5
     local y = math.max(sy, wy, hy) + cfg.maxHeapHeight
     if self.heapOutletNode ~= nil and entityExists(self.heapOutletNode) then
-        local px, py, pz = getWorldTranslation(self.heapOutletNode)
+        local px, _, pz = getWorldTranslation(self.heapOutletNode)
         cx, cz = px, pz
-        y = math.min(y, py)
     end
     local dx, dz = wx - sx, wz - sz
     local len = math.max(0.001, math.sqrt(dx * dx + dz * dz))
